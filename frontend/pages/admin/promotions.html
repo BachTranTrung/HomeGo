@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Mã Giảm Giá — HomeGo Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="/public/css/style.css"/>
+</head>
+<body>
+<div class="admin-sidebar">
+  <div class="admin-brand">🏠 HomeGo<small>Quản trị hệ thống</small></div>
+  <nav class="admin-nav">
+    <a href="/pages/admin/dashboard.html">📊 Dashboard</a>
+    <a href="/pages/admin/products.html">📦 Sản phẩm</a>
+    <a href="/pages/admin/orders.html">🛒 Đơn hàng</a>
+    <a href="/pages/admin/users.html">👥 Người dùng</a>
+    <a href="/pages/admin/promotions.html" class="active">🏷️ Mã giảm giá</a>
+  </nav>
+  <div style="padding:12px;border-top:1px solid rgba(255,255,255,.08);">
+    <a href="/index.html" style="display:flex;align-items:center;gap:8px;padding:10px 14px;color:rgba(255,255,255,.6);text-decoration:none;font-size:.88rem;">🏪 Xem cửa hàng</a>
+    <a href="#" id="sideLogout" style="display:flex;align-items:center;gap:8px;padding:10px 14px;color:rgba(255,255,255,.6);text-decoration:none;font-size:.88rem;">🚪 Đăng xuất</a>
+  </div>
+</div>
+
+<div class="admin-main">
+  <div class="admin-topbar"><h4 style="font-family:'Playfair Display',serif;font-weight:800;margin:0;">🏷️ Quản lý mã giảm giá</h4></div>
+  <div class="admin-content">
+    <div class="row g-4">
+      <!-- Form thêm mã -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3 p-4">
+          <h5 class="fw-bold mb-3">➕ Tạo mã giảm giá</h5>
+          <div id="promoAlert"></div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Mã code *</label>
+            <input class="form-control" id="fCode" placeholder="VD: SUMMER30" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Giảm giá (%) *</label>
+            <input class="form-control" type="number" id="fDiscount" min="1" max="100" placeholder="10"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Đơn hàng tối thiểu (₫)</label>
+            <input class="form-control" type="number" id="fMinOrder" min="0" value="0"/>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-bold">Ngày hết hạn</label>
+            <input class="form-control" type="date" id="fExpiry"/>
+          </div>
+          <button class="btn btn-hg-primary w-100" onclick="createPromo()">💾 Tạo mã</button>
+        </div>
+      </div>
+
+      <!-- Danh sách mã -->
+      <div class="col-lg-8">
+        <div class="hg-table">
+          <table><thead><tr>
+            <th>Mã code</th><th>Giảm</th><th>Đơn tối thiểu</th><th>Hết hạn</th><th>Trạng thái</th><th>Ngày tạo</th>
+          </tr></thead>
+          <tbody id="promoBody">
+            <tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-danger"></div></td></tr>
+          </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/public/js/api.js"></script>
+<script>
+if (!requireAdmin()) throw '';
+document.getElementById('sideLogout').addEventListener('click', e=>{ e.preventDefault(); logout(); });
+
+async function loadPromos() {
+  try {
+    const promos = await api.get('/admin/promotions');
+    document.getElementById('promoBody').innerHTML = promos.length ? promos.map(p => {
+      const expired = p.expiryDate && new Date(p.expiryDate) < new Date();
+      return `<tr>
+        <td><span style="background:#F0F0F0;padding:3px 12px;border-radius:20px;font-weight:800;font-size:.88rem;letter-spacing:.5px;">${p.code}</span></td>
+        <td><span style="color:var(--hg-red);font-weight:800;">-${p.discount}%</span></td>
+        <td>${fmtPrice(p.minOrder)}</td>
+        <td style="font-size:.85rem;">${p.expiryDate ? fmtDate(p.expiryDate) : '<span class="text-muted">Không giới hạn</span>'}</td>
+        <td>
+          ${expired
+            ? '<span class="badge bg-secondary rounded-pill">Hết hạn</span>'
+            : p.status==='active'
+              ? '<span class="badge rounded-pill" style="background:#E8F5E9;color:#28A745;">Đang dùng</span>'
+              : '<span class="badge bg-secondary rounded-pill">Vô hiệu</span>'}
+        </td>
+        <td style="color:#888;font-size:.8rem;">${fmtDate(p.createdAt)}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" class="text-center py-5 text-muted">Chưa có mã nào</td></tr>';
+  } catch(e) { document.getElementById('promoBody').innerHTML=`<tr><td colspan="6" class="text-danger text-center">${e.message}</td></tr>`; }
+}
+
+async function createPromo() {
+  const code     = document.getElementById('fCode').value.trim().toUpperCase();
+  const discount = +document.getElementById('fDiscount').value;
+  const minOrder = +document.getElementById('fMinOrder').value||0;
+  const expiry   = document.getElementById('fExpiry').value;
+  const alertEl  = document.getElementById('promoAlert');
+  alertEl.innerHTML = '';
+
+  if (!code || !discount) { alertEl.innerHTML='<div class="alert alert-danger py-2">Vui lòng điền mã và phần trăm giảm!</div>'; return; }
+  try {
+    await api.post('/admin/promotions', { code, discount, minOrder, expiryDate: expiry||null });
+    alertEl.innerHTML='<div class="alert alert-success py-2">✅ Tạo mã thành công!</div>';
+    ['fCode','fDiscount','fExpiry'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('fMinOrder').value='0';
+    loadPromos();
+  } catch(e) { alertEl.innerHTML=`<div class="alert alert-danger py-2">${e.message}</div>`; }
+}
+
+loadPromos();
+</script>
+</body>
+</html>

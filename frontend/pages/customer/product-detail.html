@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chi tiết sản phẩm — HomeGo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="/public/css/style.css"/>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg hg-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="/index.html">🏠 HomeGo</a>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <a class="nav-link text-white" href="/pages/customer/products.html">Sản phẩm</a>
+      <a class="nav-link position-relative text-white" href="/pages/customer/cart.html">🛒 <span class="cart-badge">0</span></a>
+      <span id="navLoginLink"><a class="btn btn-sm btn-light" href="/pages/customer/login.html">Đăng nhập</a></span>
+      <span class="d-none text-white" id="navLogoutLink"><a href="#" class="text-white text-decoration-none">👤 <span id="userMenuName"></span></a> | <a href="#" class="text-white" id="logoutBtn">Đăng xuất</a></span>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/index.html" class="text-danger">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a href="/pages/customer/products.html" class="text-danger">Sản phẩm</a></li>
+      <li class="breadcrumb-item active" id="breadName">...</li>
+    </ol>
+  </nav>
+
+  <div id="productDetail">
+    <div class="hg-spinner"><div class="spinner-border text-danger"></div></div>
+  </div>
+
+  <!-- Đánh giá -->
+  <div class="card border-0 shadow-sm rounded-3 mt-4 p-4" id="reviewSection" style="display:none;">
+    <h4 class="fw-bold mb-4">Đánh giá sản phẩm</h4>
+
+    <!-- Form đánh giá -->
+    <div id="reviewFormWrap" class="mb-4 p-3 rounded-3" style="background:#F8F9FA;display:none;">
+      <h6 class="fw-bold mb-3">Viết đánh giá của bạn</h6>
+      <div class="d-flex gap-1 mb-3" id="starPicker">
+        <span class="star-btn fs-3" data-v="1" style="cursor:pointer;color:#FFB800;">★</span>
+        <span class="star-btn fs-3" data-v="2" style="cursor:pointer;color:#FFB800;">★</span>
+        <span class="star-btn fs-3" data-v="3" style="cursor:pointer;color:#FFB800;">★</span>
+        <span class="star-btn fs-3" data-v="4" style="cursor:pointer;color:#DDD;">★</span>
+        <span class="star-btn fs-3" data-v="5" style="cursor:pointer;color:#DDD;">★</span>
+      </div>
+      <textarea class="form-control mb-3" id="reviewComment" rows="3" placeholder="Nhận xét của bạn..."></textarea>
+      <button class="btn btn-hg-primary" id="submitReview">Gửi đánh giá</button>
+    </div>
+
+    <div id="reviewList"></div>
+  </div>
+</div>
+
+<footer class="hg-footer"><div class="container"><div class="footer-bottom text-center">© 2025 HomeGo</div></div></footer>
+
+<button class="chatbot-bubble" id="chatbotToggle">💬</button>
+<div class="chatbot-window" id="chatbotWindow">
+  <div class="chatbot-header"><span>🤖 HomeGo AI</span><button style="background:none;border:none;color:#fff;cursor:pointer;" id="chatbotClose">✕</button></div>
+  <div class="chatbot-messages" id="chatMessages"><div class="chat-msg bot">Cần tư vấn về sản phẩm này không? 😊</div></div>
+  <div class="chatbot-input"><input type="text" id="chatInput" placeholder="Nhập câu hỏi..."/><button id="chatSend">➤</button></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/public/js/api.js"></script>
+<script src="/public/js/chatbot.js"></script>
+<script>
+const pid = new URLSearchParams(location.search).get('id');
+let currentProduct = null;
+let selectedRating = 3;
+
+if (!pid) { location.href = '/pages/customer/products.html'; }
+
+async function loadProduct() {
+  const wrap = document.getElementById('productDetail');
+  try {
+    const p = await api.get(`/products/${pid}`);
+    currentProduct = p;
+    const salePrice = p.salePrice || Math.round(p.price * (1-(p.discount||0)/100));
+    document.title = p.name + ' — HomeGo';
+    document.getElementById('breadName').textContent = p.name;
+
+    wrap.innerHTML = `
+    <div class="row g-5">
+      <div class="col-lg-5">
+        <div class="position-relative">
+          <img src="${p.imageUrl||'https://via.placeholder.com/500'}" class="img-fluid rounded-3 w-100" style="max-height:420px;object-fit:contain;background:#F8F9FA;padding:20px;" alt="${p.name}"/>
+          ${p.discount>0?`<span class="badge-discount" style="top:12px;left:12px;">-${p.discount}%</span>`:''}
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div style="color:var(--hg-red);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;">${p.category?.name||''}</div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;margin:8px 0 12px;">${p.name}</h1>
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span style="color:#FFB800;">${'★'.repeat(Math.round(p.avgRating||0))}${'☆'.repeat(5-Math.round(p.avgRating||0))}</span>
+          <span class="text-muted small">${Number(p.avgRating||0).toFixed(1)} (${p.reviewCount||0} đánh giá)</span>
+        </div>
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span style="color:var(--hg-red);font-size:2rem;font-weight:900;">${fmtPrice(salePrice)}</span>
+          ${p.discount>0?`<span class="text-muted text-decoration-line-through fs-5">${fmtPrice(p.price)}</span>`:''}
+        </div>
+        <div class="mb-3">
+          ${p.stock>0
+            ? `<span class="text-success fw-bold">✓ Còn hàng (${p.stock})</span>`
+            : `<span class="text-danger fw-bold">✗ Hết hàng</span>`}
+        </div>
+        <!-- Qty -->
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <span class="fw-bold">Số lượng:</span>
+          <div class="d-flex align-items-center border rounded-3 overflow-hidden">
+            <button class="btn btn-sm px-3" style="border:none;background:#F0F0F0;" onclick="changeQty(-1)">−</button>
+            <span class="px-3 fw-bold" id="qtyDisplay">1</span>
+            <button class="btn btn-sm px-3" style="border:none;background:#F0F0F0;" onclick="changeQty(1)">+</button>
+          </div>
+        </div>
+        <button class="btn btn-hg-primary btn-lg px-5 mb-4" onclick="doAddToCart()" ${p.stock===0?'disabled':''}>
+          🛒 Thêm vào giỏ hàng
+        </button>
+        <div class="p-3 rounded-3 mb-3" style="background:#F8F9FA;font-size:.88rem;line-height:1.9;color:#555;">
+          📦 Giao hàng tận nơi toàn quốc<br>
+          🔒 Bảo hành chính hãng 12 tháng<br>
+          ↩️ Đổi trả miễn phí 30 ngày
+        </div>
+        <div>
+          <h6 class="fw-bold mb-2">Mô tả sản phẩm</h6>
+          <p class="text-secondary" style="line-height:1.8;">${p.description||'Chưa có mô tả.'}</p>
+        </div>
+      </div>
+    </div>`;
+
+    // Reviews
+    document.getElementById('reviewSection').style.display = '';
+    if (isLoggedIn()) document.getElementById('reviewFormWrap').style.display = '';
+    renderReviews(p.reviews || []);
+  } catch { wrap.innerHTML = '<p class="text-danger">Không tìm thấy sản phẩm.</p>'; }
+}
+
+let qty = 1;
+function changeQty(d) {
+  qty = Math.max(1, Math.min(currentProduct?.stock||99, qty + d));
+  document.getElementById('qtyDisplay').textContent = qty;
+}
+function doAddToCart() {
+  if (!isLoggedIn()) { showToast('Vui lòng đăng nhập!','error'); return; }
+  for (let i = 0; i < qty; i++) addToCart(currentProduct, 1);
+  showToast(`Đã thêm ${qty} sản phẩm vào giỏ!`);
+}
+
+function renderReviews(reviews) {
+  const el = document.getElementById('reviewList');
+  if (!reviews.length) { el.innerHTML = '<p class="text-muted fst-italic">Chưa có đánh giá. Hãy là người đầu tiên!</p>'; return; }
+  el.innerHTML = reviews.map(r => `
+    <div class="border-bottom py-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="fw-bold">${r.user?.fullName||'Khách hàng'}</span>
+        <span style="color:#FFB800;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+      </div>
+      <p class="text-secondary mb-1" style="font-size:.9rem;">${r.comment||''}</p>
+      <small class="text-muted">${fmtDate(r.createdAt)}</small>
+    </div>`).join('');
+}
+
+// Star picker
+let pickerRating = 3;
+document.querySelectorAll('.star-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    pickerRating = +btn.dataset.v;
+    document.querySelectorAll('.star-btn').forEach((s,i) => {
+      s.style.color = i < pickerRating ? '#FFB800' : '#DDD';
+    });
+  });
+});
+
+document.getElementById('submitReview').addEventListener('click', async () => {
+  const comment = document.getElementById('reviewComment').value.trim();
+  try {
+    await api.post(`/products/${pid}/reviews`, { rating: pickerRating, comment });
+    showToast('Cảm ơn đánh giá của bạn!');
+    document.getElementById('reviewComment').value = '';
+    loadProduct();
+  } catch(e) { showToast(e.message, 'error'); }
+});
+
+loadProduct();
+</script>
+</body>
+</html>

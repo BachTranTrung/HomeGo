@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Liên Hệ & Bản Đồ — HomeGo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="/public/css/style.css"/>
+  <style>
+    #map { height: 420px; border-radius: 12px; overflow: hidden; }
+    .store-card { border-left: 4px solid var(--hg-red); }
+    .store-card.active { background: #FFF0F1; border-color: var(--hg-red); }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg hg-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="/index.html">🏠 HomeGo</a>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <a class="text-white text-decoration-none" href="/pages/customer/products.html">Sản phẩm</a>
+      <a class="text-white text-decoration-none position-relative" href="/pages/customer/cart.html">🛒 <span class="cart-badge">0</span></a>
+      <span id="navLoginLink"><a class="btn btn-sm btn-light" href="/pages/customer/login.html">Đăng nhập</a></span>
+      <span class="d-none text-white" id="navLogoutLink"><a href="#" class="text-white" id="logoutBtn">Đăng xuất</a></span>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero nhỏ -->
+<div style="background:linear-gradient(135deg,var(--hg-red),#1A1A2E);color:#fff;padding:48px 0;">
+  <div class="container text-center">
+    <h1 style="font-family:'Playfair Display',serif;font-weight:800;">📍 Liên Hệ & Showroom</h1>
+    <p style="opacity:.85;">Ghé thăm chúng tôi hoặc liên hệ qua các kênh bên dưới</p>
+  </div>
+</div>
+
+<div class="container py-5">
+  <div class="row g-5">
+    <!-- Thông tin liên hệ -->
+    <div class="col-lg-4">
+      <h4 class="fw-bold mb-4">Thông tin liên hệ</h4>
+
+      <div class="d-flex flex-column gap-3 mb-4">
+        <div class="d-flex gap-3 align-items-start">
+          <div style="font-size:1.5rem;width:36px;text-align:center;">📞</div>
+          <div><div class="fw-bold">Hotline</div><div class="text-muted">1800 1234 (miễn phí)<br>8:00 – 22:00 mỗi ngày</div></div>
+        </div>
+        <div class="d-flex gap-3 align-items-start">
+          <div style="font-size:1.5rem;width:36px;text-align:center;">✉️</div>
+          <div><div class="fw-bold">Email</div><div class="text-muted">support@homego.vn<br>Phản hồi trong 2 giờ</div></div>
+        </div>
+        <div class="d-flex gap-3 align-items-start">
+          <div style="font-size:1.5rem;width:36px;text-align:center;">💬</div>
+          <div><div class="fw-bold">Live Chat</div><div class="text-muted">Chat trực tiếp qua AI Chatbot<br>Trả lời ngay lập tức</div></div>
+        </div>
+      </div>
+
+      <!-- Showrooms -->
+      <h5 class="fw-bold mb-3">Showroom</h5>
+      <div class="d-flex flex-column gap-2" id="storeList">
+        <div class="card border-0 shadow-sm p-3 store-card active" onclick="focusStore(0)" style="cursor:pointer;">
+          <div class="fw-bold">🏪 HomeGo TP.HCM</div>
+          <div class="text-muted small mt-1">123 Nguyễn Văn Linh, P.Tân Phong, Q.7</div>
+          <div class="text-muted small">⏰ 8:00 – 21:00 | 📞 028 1234 5678</div>
+        </div>
+        <div class="card border-0 shadow-sm p-3 store-card" onclick="focusStore(1)" style="cursor:pointer;">
+          <div class="fw-bold">🏪 HomeGo Hà Nội</div>
+          <div class="text-muted small mt-1">456 Trần Duy Hưng, P.Trung Hoà, Cầu Giấy</div>
+          <div class="text-muted small">⏰ 8:00 – 21:00 | 📞 024 1234 5678</div>
+        </div>
+        <div class="card border-0 shadow-sm p-3 store-card" onclick="focusStore(2)" style="cursor:pointer;">
+          <div class="fw-bold">🏪 HomeGo Đà Nẵng</div>
+          <div class="text-muted small mt-1">789 Nguyễn Văn Linh, P.Thạc Gián, Thanh Khê</div>
+          <div class="text-muted small">⏰ 8:00 – 21:00 | 📞 0236 1234 567</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Map -->
+    <div class="col-lg-8">
+      <h4 class="fw-bold mb-4">Bản đồ cửa hàng</h4>
+      <div id="map"></div>
+      <p class="text-muted small mt-2">
+        * Bản đồ hiển thị bằng Google Maps API. Nhấn vào showroom bên trái để xem vị trí.
+        <br>* Để sử dụng Google Maps thật, thêm API key vào <code>.env</code> và cập nhật trong trang này.
+      </p>
+    </div>
+  </div>
+
+  <!-- Form liên hệ -->
+  <div class="row mt-5">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-3 p-4">
+        <h4 class="fw-bold mb-4">✉️ Gửi tin nhắn cho chúng tôi</h4>
+        <div id="contactAlert"></div>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label fw-bold">Họ và tên *</label>
+            <input class="form-control" id="ctName" placeholder="Nguyễn Văn A"/>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold">Email *</label>
+            <input class="form-control" id="ctEmail" type="email" placeholder="email@example.com"/>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Chủ đề</label>
+            <select class="form-select" id="ctSubject">
+              <option>Tư vấn sản phẩm</option>
+              <option>Hỗ trợ đơn hàng</option>
+              <option>Chính sách bảo hành</option>
+              <option>Khiếu nại / Phản hồi</option>
+              <option>Hợp tác kinh doanh</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Nội dung *</label>
+            <textarea class="form-control" id="ctMsg" rows="4" placeholder="Nhập nội dung cần hỗ trợ..."></textarea>
+          </div>
+        </div>
+        <button class="btn btn-hg-primary mt-3" onclick="sendContact()">📨 Gửi tin nhắn</button>
+      </div>
+    </div>
+    <div class="col-lg-5 d-flex align-items-center">
+      <div class="p-4 rounded-3 w-100" style="background:linear-gradient(135deg,var(--hg-red),#1A1A2E);color:#fff;">
+        <h5 class="fw-bold mb-3">🕐 Giờ làm việc</h5>
+        <div class="d-flex justify-content-between py-2 border-bottom border-light border-opacity-25"><span>Thứ 2 – Thứ 6</span><span class="fw-bold">8:00 – 22:00</span></div>
+        <div class="d-flex justify-content-between py-2 border-bottom border-light border-opacity-25"><span>Thứ 7</span><span class="fw-bold">8:00 – 21:00</span></div>
+        <div class="d-flex justify-content-between py-2"><span>Chủ nhật</span><span class="fw-bold">9:00 – 20:00</span></div>
+        <hr style="border-color:rgba(255,255,255,.2);"/>
+        <h5 class="fw-bold mb-3">📱 Mạng xã hội</h5>
+        <div class="d-flex gap-3 flex-wrap">
+          <a href="#" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none;">📘 Facebook</a>
+          <a href="#" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none;">📸 Instagram</a>
+          <a href="#" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none;">🎵 TikTok</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="hg-footer">
+  <div class="container"><div class="footer-bottom text-center">© 2025 HomeGo. Bảo lưu mọi quyền.</div></div>
+</footer>
+
+<!-- Chatbot -->
+<button class="chatbot-bubble" id="chatbotToggle">💬</button>
+<div class="chatbot-window" id="chatbotWindow">
+  <div class="chatbot-header"><span>🤖 HomeGo AI</span><button style="background:none;border:none;color:#fff;cursor:pointer;" id="chatbotClose">✕</button></div>
+  <div class="chatbot-messages" id="chatMessages"><div class="chat-msg bot">Xin chào! Cần hỗ trợ gì không? 😊</div></div>
+  <div class="chatbot-input"><input type="text" id="chatInput" placeholder="Nhập câu hỏi..."/><button id="chatSend">➤</button></div>
+</div>
+
+<!-- Google Maps API — thay YOUR_API_KEY bằng key thật -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer
+  onerror="initMapFallback()"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/public/js/api.js"></script>
+<script src="/public/js/chatbot.js"></script>
+<script>
+const STORES = [
+  { lat: 10.7285, lng: 106.7007, title: 'HomeGo TP.HCM', address: '123 Nguyễn Văn Linh, Q.7' },
+  { lat: 21.0080, lng: 105.8050, title: 'HomeGo Hà Nội',  address: '456 Trần Duy Hưng, Cầu Giấy' },
+  { lat: 16.0554, lng: 108.2022, title: 'HomeGo Đà Nẵng', address: '789 Nguyễn Văn Linh, Thanh Khê' },
+];
+
+let map, markers = [];
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 10.7285, lng: 106.7007 },
+    zoom: 13,
+    styles: [{ featureType:'poi',elementType:'labels',stylers:[{visibility:'off'}] }],
+  });
+  STORES.forEach((s, i) => {
+    const marker = new google.maps.Marker({
+      position: { lat: s.lat, lng: s.lng },
+      map,
+      title: s.title,
+      icon: { url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+    });
+    const infoWin = new google.maps.InfoWindow({
+      content: `<div style="font-family:Nunito,sans-serif;min-width:180px;">
+        <div style="font-weight:800;color:#D70018;">${s.title}</div>
+        <div style="font-size:.85rem;margin-top:4px;">${s.address}</div>
+      </div>`,
+    });
+    marker.addListener('click', () => { infoWin.open(map, marker); focusStore(i); });
+    markers.push({ marker, infoWin });
+  });
+}
+
+// Fallback nếu không có API key
+function initMapFallback() {
+  document.getElementById('map').innerHTML = `
+    <div style="height:420px;border-radius:12px;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;">
+      <div style="font-size:3rem;margin-bottom:12px;">🗺️</div>
+      <div style="font-weight:700;">Google Maps</div>
+      <div style="font-size:.85rem;margin-top:8px;text-align:center;max-width:300px;">
+        Thêm Google Maps API Key vào trang này để hiển thị bản đồ.<br>
+        Xem hướng dẫn trong file <code>HUONG_DAN_CHAY.md</code>
+      </div>
+    </div>`;
+}
+
+function focusStore(idx) {
+  document.querySelectorAll('.store-card').forEach((c,i) => c.classList.toggle('active', i===idx));
+  if (!map || !markers[idx]) return;
+  map.setCenter(markers[idx].marker.getPosition());
+  map.setZoom(15);
+  markers.forEach(m => m.infoWin.close());
+  markers[idx].infoWin.open(map, markers[idx].marker);
+}
+
+function sendContact() {
+  const name  = document.getElementById('ctName').value.trim();
+  const email = document.getElementById('ctEmail').value.trim();
+  const msg   = document.getElementById('ctMsg').value.trim();
+  const alertEl = document.getElementById('contactAlert');
+  if (!name || !email || !msg) {
+    alertEl.innerHTML = '<div class="alert alert-danger py-2">Vui lòng điền đầy đủ thông tin!</div>'; return;
+  }
+  // Giả lập gửi (thực tế cần API gửi email)
+  alertEl.innerHTML = '<div class="alert alert-success py-2">✅ Tin nhắn đã được gửi! Chúng tôi sẽ phản hồi trong vòng 2 giờ.</div>';
+  document.getElementById('ctName').value = document.getElementById('ctEmail').value = document.getElementById('ctMsg').value = '';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Tài Khoản — HomeGo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="/public/css/style.css"/>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg hg-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="/index.html">🏠 HomeGo</a>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <a class="text-white text-decoration-none" href="/pages/customer/products.html">Sản phẩm</a>
+      <a class="text-white text-decoration-none position-relative" href="/pages/customer/cart.html">🛒 <span class="cart-badge">0</span></a>
+      <a href="#" class="text-white text-decoration-none" id="navLogoutLink">Đăng xuất</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <div class="row g-4">
+    <!-- Sidebar menu -->
+    <div class="col-lg-3">
+      <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <div class="p-4 text-center" style="background:linear-gradient(135deg,var(--hg-red),#1A1A2E);color:#fff;">
+          <div class="avatar-circle mx-auto mb-2" style="width:60px;height:60px;font-size:1.5rem;" id="avatarCircle">A</div>
+          <div class="fw-bold" id="profileName">...</div>
+          <small style="opacity:.7;" id="profileEmail">...</small>
+        </div>
+        <div class="p-2">
+          <button class="btn w-100 text-start py-2 px-3 mb-1 fw-600" id="tabProfileBtn" onclick="showTab('profile')" style="font-weight:600;border:none;background:var(--hg-red);color:#fff;border-radius:8px;">👤 Thông tin cá nhân</button>
+          <button class="btn w-100 text-start py-2 px-3 mb-1" id="tabPwBtn" onclick="showTab('password')" style="font-weight:600;border:none;border-radius:8px;">🔒 Đổi mật khẩu</button>
+          <a href="/pages/customer/orders.html" class="btn w-100 text-start py-2 px-3 mb-1" style="font-weight:600;border:none;border-radius:8px;">📦 Đơn hàng của tôi</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="col-lg-9">
+      <!-- Profile tab -->
+      <div id="tabProfile" class="card border-0 shadow-sm rounded-3 p-4">
+        <h5 class="fw-bold mb-4">👤 Thông tin cá nhân</h5>
+        <div id="profileAlert"></div>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label fw-bold">Username</label>
+            <input class="form-control" id="fUsername" disabled style="background:#F8F9FA;"/>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold">Email</label>
+            <input class="form-control" id="fEmail" disabled style="background:#F8F9FA;"/>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Họ và tên</label>
+            <input class="form-control" id="fFullName" placeholder="Nguyễn Văn A"/>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold">Số điện thoại</label>
+            <input class="form-control" id="fPhone" placeholder="0901234567"/>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold">Ngày tham gia</label>
+            <input class="form-control" id="fJoined" disabled style="background:#F8F9FA;"/>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Địa chỉ</label>
+            <textarea class="form-control" id="fAddress" rows="2" placeholder="Địa chỉ nhận hàng mặc định"></textarea>
+          </div>
+        </div>
+        <button class="btn btn-hg-primary mt-4" onclick="saveProfile()">💾 Lưu thay đổi</button>
+      </div>
+
+      <!-- Password tab -->
+      <div id="tabPassword" class="card border-0 shadow-sm rounded-3 p-4" style="display:none;">
+        <h5 class="fw-bold mb-4">🔒 Đổi mật khẩu</h5>
+        <div id="pwAlert"></div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Mật khẩu cũ</label>
+          <input type="password" class="form-control" id="fOldPw" placeholder="••••••••"/>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Mật khẩu mới <small class="text-muted">(ít nhất 6 ký tự)</small></label>
+          <input type="password" class="form-control" id="fNewPw" placeholder="••••••••"/>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-bold">Xác nhận mật khẩu mới</label>
+          <input type="password" class="form-control" id="fConfirmPw" placeholder="••••••••"/>
+        </div>
+        <button class="btn btn-hg-primary" onclick="changePw()">🔒 Đổi mật khẩu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="hg-footer"><div class="container"><div class="footer-bottom text-center">© 2025 HomeGo</div></div></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/public/js/api.js"></script>
+<script>
+if (!requireLogin()) throw '';
+
+function showTab(tab) {
+  document.getElementById('tabProfile').style.display  = tab==='profile'  ? '' : 'none';
+  document.getElementById('tabPassword').style.display = tab==='password' ? '' : 'none';
+  document.getElementById('tabProfileBtn').style.background = tab==='profile'  ? 'var(--hg-red)' : '';
+  document.getElementById('tabProfileBtn').style.color      = tab==='profile'  ? '#fff' : '';
+  document.getElementById('tabPwBtn').style.background      = tab==='password' ? 'var(--hg-red)' : '';
+  document.getElementById('tabPwBtn').style.color           = tab==='password' ? '#fff' : '';
+}
+
+async function loadProfile() {
+  const u = await api.get('/auth/profile');
+  document.getElementById('fUsername').value  = u.username  || '';
+  document.getElementById('fEmail').value     = u.email     || '';
+  document.getElementById('fFullName').value  = u.fullName  || '';
+  document.getElementById('fPhone').value     = u.phone     || '';
+  document.getElementById('fAddress').value   = u.address   || '';
+  document.getElementById('fJoined').value    = fmtDate(u.createdAt);
+  document.getElementById('profileName').textContent  = u.fullName || u.username;
+  document.getElementById('profileEmail').textContent = u.email;
+  document.getElementById('avatarCircle').textContent = (u.fullName||u.username||'?')[0].toUpperCase();
+}
+
+async function saveProfile() {
+  const alertEl = document.getElementById('profileAlert');
+  try {
+    await api.put('/auth/profile', {
+      fullName: document.getElementById('fFullName').value.trim(),
+      phone:    document.getElementById('fPhone').value.trim(),
+      address:  document.getElementById('fAddress').value.trim(),
+    });
+    alertEl.innerHTML = '<div class="alert alert-success py-2">✅ Cập nhật thành công!</div>';
+    loadProfile();
+  } catch(e) { alertEl.innerHTML = `<div class="alert alert-danger py-2">${e.message}</div>`; }
+}
+
+async function changePw() {
+  const oldPw     = document.getElementById('fOldPw').value;
+  const newPw     = document.getElementById('fNewPw').value;
+  const confirmPw = document.getElementById('fConfirmPw').value;
+  const alertEl   = document.getElementById('pwAlert');
+  alertEl.innerHTML = '';
+
+  if (!oldPw || !newPw || !confirmPw) {
+    alertEl.innerHTML = '<div class="alert alert-danger py-2">Vui lòng điền đầy đủ!</div>'; return;
+  }
+  if (newPw !== confirmPw) {
+    alertEl.innerHTML = '<div class="alert alert-danger py-2">Mật khẩu mới không khớp!</div>'; return;
+  }
+  if (newPw.length < 6) {
+    alertEl.innerHTML = '<div class="alert alert-danger py-2">Mật khẩu mới phải ít nhất 6 ký tự!</div>'; return;
+  }
+  try {
+    await api.put('/auth/change-password', { oldPassword: oldPw, newPassword: newPw });
+    alertEl.innerHTML = '<div class="alert alert-success py-2">✅ Đổi mật khẩu thành công!</div>';
+    document.getElementById('fOldPw').value = document.getElementById('fNewPw').value = document.getElementById('fConfirmPw').value = '';
+  } catch(e) { alertEl.innerHTML = `<div class="alert alert-danger py-2">${e.message}</div>`; }
+}
+
+loadProfile();
+</script>
+</body>
+</html>

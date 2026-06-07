@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Dashboard — HomeGo Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="/public/css/style.css"/>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="admin-sidebar">
+  <div class="admin-brand">🏠 HomeGo<small>Quản trị hệ thống</small></div>
+  <nav class="admin-nav">
+    <a href="/pages/admin/dashboard.html" class="active">📊 Dashboard</a>
+    <a href="/pages/admin/products.html">📦 Sản phẩm</a>
+    <a href="/pages/admin/orders.html">🛒 Đơn hàng</a>
+    <a href="/pages/admin/users.html">👥 Người dùng</a>
+    <a href="/pages/admin/promotions.html">🏷️ Mã giảm giá</a>
+  </nav>
+  <div style="padding:12px;border-top:1px solid rgba(255,255,255,.08);">
+    <a href="/index.html" style="display:flex;align-items:center;gap:8px;padding:10px 14px;color:rgba(255,255,255,.6);text-decoration:none;font-size:.88rem;">🏪 Xem cửa hàng</a>
+    <a href="#" id="sideLogout" style="display:flex;align-items:center;gap:8px;padding:10px 14px;color:rgba(255,255,255,.6);text-decoration:none;font-size:.88rem;">🚪 Đăng xuất</a>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="admin-main">
+  <div class="admin-topbar d-flex justify-content-between align-items-center">
+    <h4 style="font-family:'Playfair Display',serif;font-weight:800;margin:0;">📊 Dashboard</h4>
+    <div class="text-muted small">👑 <span id="adminName"></span></div>
+  </div>
+  <div class="admin-content">
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4" id="statCards">
+      <div class="col-12 hg-spinner"><div class="spinner-border text-danger"></div></div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Recent orders -->
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3 p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">🕐 Đơn hàng gần đây</h6>
+            <a href="/pages/admin/orders.html" class="btn btn-sm btn-hg-outline">Xem tất cả</a>
+          </div>
+          <div class="hg-table">
+            <table><thead><tr>
+              <th>Mã ĐH</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th><th>Ngày</th>
+            </tr></thead>
+            <tbody id="recentOrdersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top products + Monthly revenue -->
+      <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+          <h6 class="fw-bold mb-3">🏆 Sản phẩm bán chạy</h6>
+          <div id="topProductsList"></div>
+        </div>
+        <div class="card border-0 shadow-sm rounded-3 p-4">
+          <h6 class="fw-bold mb-3">📈 Doanh thu theo tháng</h6>
+          <div id="monthlyChart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/public/js/api.js"></script>
+<script>
+if (!requireAdmin()) throw '';
+document.getElementById('adminName').textContent = getUser()?.fullName || getUser()?.username || '';
+document.getElementById('sideLogout').addEventListener('click', e => { e.preventDefault(); logout(); });
+
+const STATUS_MAP = {
+  pending:   { label:'Chờ xác nhận', cls:'status-pending' },
+  confirmed: { label:'Đã xác nhận',  cls:'status-confirmed' },
+  shipping:  { label:'Đang giao',    cls:'status-shipping' },
+  delivered: { label:'Đã giao',      cls:'status-delivered' },
+  cancelled: { label:'Đã hủy',       cls:'status-cancelled' },
+};
+
+async function loadStats() {
+  try {
+    const s = await api.get('/admin/statistics');
+
+    // Stat cards
+    const cards = [
+      { icon:'💰', label:'Doanh thu', value: fmtPrice(s.revenue), color:'#D70018', bg:'#FFF0F1' },
+      { icon:'🛒', label:'Tổng đơn hàng', value: s.totalOrders, color:'#2196F3', bg:'#E3F2FD' },
+      { icon:'👥', label:'Khách hàng', value: s.totalUsers, color:'#9C27B0', bg:'#F3E5F5' },
+      { icon:'📦', label:'Sản phẩm', value: s.totalProducts, color:'#28A745', bg:'#E8F5E9' },
+    ];
+    document.getElementById('statCards').innerHTML = cards.map(c => `
+      <div class="col-6 col-xl-3">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:${c.bg};color:${c.color};">${c.icon}</div>
+          <div><div class="stat-label">${c.label}</div><div class="stat-value" style="color:${c.color};">${c.value}</div></div>
+        </div>
+      </div>`).join('');
+
+    // Recent orders
+    document.getElementById('recentOrdersBody').innerHTML = s.recentOrders.map(o => {
+      const st = STATUS_MAP[o.status]||STATUS_MAP.pending;
+      return `<tr>
+        <td><span style="color:var(--hg-red);font-weight:700;">#${o._id.slice(-6).toUpperCase()}</span></td>
+        <td>${o.user?.fullName||o.user?.email||'—'}</td>
+        <td><strong>${fmtPrice(o.totalMoney)}</strong></td>
+        <td><span class="badge rounded-pill px-2 py-1 ${st.cls}" style="font-size:.72rem;">${st.label}</span></td>
+        <td style="color:#888;font-size:.8rem;">${fmtDate(o.createdAt)}</td>
+      </tr>`;
+    }).join('');
+
+    // Top products
+    document.getElementById('topProductsList').innerHTML = s.topProducts.map((p,i) => `
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--hg-red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0;">${i+1}</div>
+        <div class="flex-grow-1 small fw-bold" style="line-height:1.3;">${p.name}</div>
+        <div style="color:var(--hg-red);font-weight:800;white-space:nowrap;font-size:.85rem;">${p.sold} bán</div>
+      </div>`).join('');
+
+    // Monthly revenue bar chart
+    const maxRev = Math.max(...s.monthlyRevenue.map(m => m.revenue), 1);
+    document.getElementById('monthlyChart').innerHTML = s.monthlyRevenue.slice(0,6).reverse().map(m => `
+      <div class="mb-2">
+        <div class="d-flex justify-content-between" style="font-size:.75rem;color:#888;margin-bottom:3px;">
+          <span>${m.month}</span>
+          <span class="fw-bold">${fmtPrice(m.revenue)}</span>
+        </div>
+        <div style="background:#F0F0F0;border-radius:4px;height:8px;overflow:hidden;">
+          <div style="width:${(m.revenue/maxRev*100).toFixed(1)}%;background:linear-gradient(90deg,var(--hg-red),var(--hg-orange));height:100%;border-radius:4px;transition:width .6s;"></div>
+        </div>
+      </div>`).join('');
+
+  } catch(e) { console.error(e); }
+}
+
+loadStats();
+</script>
+</body>
+</html>

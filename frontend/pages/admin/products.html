@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Sản Phẩm — HomeGo Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="/public/css/style.css"/>
+</head>
+<body>
+<div class="admin-sidebar">
+  <div class="admin-brand">🏠 HomeGo<small>Quản trị hệ thống</small></div>
+  <nav class="admin-nav">
+    <a href="/pages/admin/dashboard.html">📊 Dashboard</a>
+    <a href="/pages/admin/products.html" class="active">📦 Sản phẩm</a>
+    <a href="/pages/admin/orders.html">🛒 Đơn hàng</a>
+    <a href="/pages/admin/users.html">👥 Người dùng</a>
+    <a href="/pages/admin/promotions.html">🏷️ Mã giảm giá</a>
+  </nav>
+  <div style="padding:12px;border-top:1px solid rgba(255,255,255,.08);">
+    <a href="/index.html" style="display:flex;align-items:center;gap:8px;padding:10px 14px;color:rgba(255,255,255,.6);text-decoration:none;font-size:.88rem;">🏪 Xem cửa hàng</a>
+    <a href="#" id="sideLogout" style="display:flex;align-items:center;gap:8px;padding:10px 14px;color:rgba(255,255,255,.6);text-decoration:none;font-size:.88rem;">🚪 Đăng xuất</a>
+  </div>
+</div>
+
+<div class="admin-main">
+  <div class="admin-topbar"><h4 style="font-family:'Playfair Display',serif;font-weight:800;margin:0;">📦 Quản lý sản phẩm</h4></div>
+  <div class="admin-content">
+    <!-- Toolbar -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <input class="form-control" id="searchInput" placeholder="🔍 Tìm tên sản phẩm..." style="max-width:280px;" oninput="filterProducts()"/>
+      <button class="btn btn-hg-primary" onclick="openModal()">+ Thêm sản phẩm</button>
+    </div>
+
+    <!-- Table -->
+    <div class="hg-table">
+      <table id="productTable">
+        <thead><tr>
+          <th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Giảm</th><th>Kho</th><th>Nổi bật</th><th>Thao tác</th>
+        </tr></thead>
+        <tbody id="productBody">
+          <tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-danger"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal thêm/sửa sản phẩm -->
+<div class="modal fade" id="productModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="modalTitle">Thêm sản phẩm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4">
+        <div id="modalAlert"></div>
+        <div class="row g-3">
+          <div class="col-8">
+            <label class="form-label fw-bold">Tên sản phẩm *</label>
+            <input class="form-control" id="fName"/>
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-bold">Danh mục</label>
+            <select class="form-select" id="fCategory"><option value="">-- Chọn --</option></select>
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-bold">Giá gốc (₫) *</label>
+            <input class="form-control" type="number" id="fPrice" min="0"/>
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-bold">Giảm giá (%)</label>
+            <input class="form-control" type="number" id="fDiscount" min="0" max="100" value="0"/>
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-bold">Tồn kho</label>
+            <input class="form-control" type="number" id="fStock" min="0" value="0"/>
+          </div>
+          <div class="col-8">
+            <label class="form-label fw-bold">URL hình ảnh</label>
+            <input class="form-control" id="fImage" placeholder="https://..." oninput="previewImg()"/>
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-bold">Nổi bật</label>
+            <select class="form-select" id="fFeatured"><option value="false">Không</option><option value="true">Có ⭐</option></select>
+          </div>
+          <div class="col-12">
+            <img id="imgPreview" src="" alt="" style="height:80px;object-fit:contain;border-radius:8px;background:#F8F9FA;display:none;"/>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Mô tả</label>
+            <textarea class="form-control" id="fDesc" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button class="btn btn-hg-primary" id="saveBtn" onclick="saveProduct()">💾 Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/public/js/api.js"></script>
+<script>
+if (!requireAdmin()) throw '';
+document.getElementById('sideLogout').addEventListener('click', e => { e.preventDefault(); logout(); });
+
+let allProducts = [], allCategories = [], editingId = null;
+const modal = new bootstrap.Modal(document.getElementById('productModal'));
+
+async function loadAll() {
+  const [pd, cd] = await Promise.all([api.get('/products?limit=200'), api.get('/categories')]);
+  allProducts = pd.products; allCategories = cd;
+  renderTable(allProducts);
+  const sel = document.getElementById('fCategory');
+  sel.innerHTML = '<option value="">-- Chọn danh mục --</option>' + cd.map(c=>`<option value="${c._id}">${c.icon} ${c.name}</option>`).join('');
+}
+
+function renderTable(products) {
+  document.getElementById('productBody').innerHTML = products.length ? products.map(p => {
+    const cat = allCategories.find(c=>c._id===p.category?._id||p.category)||{name:'—',icon:''};
+    const salePrice = Math.round(p.price*(1-(p.discount||0)/100));
+    return `<tr>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <img src="${p.imageUrl||'https://via.placeholder.com/48'}" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:#F8F9FA;flex-shrink:0;"/>
+          <div><div class="fw-bold" style="font-size:.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
+          <small class="text-muted">ID: ${p._id.slice(-6)}</small></div>
+        </div>
+      </td>
+      <td><span style="background:#F0F0F0;padding:2px 8px;border-radius:10px;font-size:.75rem;">${p.category?.name||'—'}</span></td>
+      <td><strong>${fmtPrice(p.price)}</strong>${p.discount>0?`<br><small class="text-danger">→ ${fmtPrice(salePrice)}</small>`:''}</td>
+      <td>${p.discount>0?`<span style="background:#FFF0F1;color:var(--hg-red);padding:2px 8px;border-radius:10px;font-size:.75rem;font-weight:700;">-${p.discount}%</span>`:'<span class="text-muted">—</span>'}</td>
+      <td><span class="${p.stock>5?'text-success':'text-danger'} fw-bold">${p.stock}</span></td>
+      <td>${p.isFeatured?'<span style="font-size:1.1rem;">⭐</span>':'<span class="text-muted">—</span>'}</td>
+      <td>
+        <div class="d-flex gap-1">
+          <button class="btn btn-sm btn-hg-outline" onclick='editProduct(${JSON.stringify(p)})'>✏️</button>
+          <button class="btn btn-sm" style="background:#FFF0F1;color:var(--hg-red);" onclick="deleteProduct('${p._id}','${p.name.replace(/'/g,'')}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="text-center py-5 text-muted">Không có sản phẩm nào</td></tr>';
+}
+
+function filterProducts() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  renderTable(allProducts.filter(p => p.name.toLowerCase().includes(q)));
+}
+
+function openModal(editing=false) {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Thêm sản phẩm mới';
+  document.getElementById('modalAlert').innerHTML = '';
+  ['fName','fImage','fDesc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fPrice').value = document.getElementById('fDiscount').value = document.getElementById('fStock').value = 0;
+  document.getElementById('fFeatured').value = 'false';
+  document.getElementById('imgPreview').style.display='none';
+  modal.show();
+}
+
+function editProduct(p) {
+  editingId = p._id;
+  document.getElementById('modalTitle').textContent = 'Chỉnh sửa sản phẩm';
+  document.getElementById('modalAlert').innerHTML = '';
+  document.getElementById('fName').value     = p.name;
+  document.getElementById('fPrice').value    = p.price;
+  document.getElementById('fDiscount').value = p.discount||0;
+  document.getElementById('fStock').value    = p.stock||0;
+  document.getElementById('fImage').value    = p.imageUrl||'';
+  document.getElementById('fDesc').value     = p.description||'';
+  document.getElementById('fFeatured').value = p.isFeatured?'true':'false';
+  document.getElementById('fCategory').value = p.category?._id||p.category||'';
+  previewImg();
+  modal.show();
+}
+
+function previewImg() {
+  const url = document.getElementById('fImage').value.trim();
+  const img = document.getElementById('imgPreview');
+  if (url) { img.src=url; img.style.display=''; } else img.style.display='none';
+}
+
+async function saveProduct() {
+  const body = {
+    name:        document.getElementById('fName').value.trim(),
+    category:    document.getElementById('fCategory').value||undefined,
+    price:       +document.getElementById('fPrice').value,
+    discount:    +document.getElementById('fDiscount').value,
+    stock:       +document.getElementById('fStock').value,
+    imageUrl:    document.getElementById('fImage').value.trim(),
+    description: document.getElementById('fDesc').value.trim(),
+    isFeatured:  document.getElementById('fFeatured').value==='true',
+  };
+  const alertEl = document.getElementById('modalAlert');
+  if (!body.name||!body.price) { alertEl.innerHTML='<div class="alert alert-danger py-2">Vui lòng nhập tên và giá!</div>'; return; }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='Đang lưu...';
+  try {
+    if (editingId) await api.put(`/products/${editingId}`, body);
+    else           await api.post('/products', body);
+    modal.hide(); showToast(editingId?'Đã cập nhật sản phẩm!':'Đã thêm sản phẩm!');
+    loadAll();
+  } catch(e) { alertEl.innerHTML=`<div class="alert alert-danger py-2">${e.message}</div>`; }
+  finally { btn.disabled=false; btn.textContent='💾 Lưu'; }
+}
+
+async function deleteProduct(id, name) {
+  if (!confirm(`Xóa sản phẩm "${name}"?`)) return;
+  try { await api.delete(`/products/${id}`); showToast('Đã xóa!'); loadAll(); }
+  catch(e) { showToast(e.message,'error'); }
+}
+
+loadAll();
+</script>
+</body>
+</html>
